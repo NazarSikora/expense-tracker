@@ -3,6 +3,7 @@ import api from '../api'
 import ExpenseForm from '../components/ExpenseForm'
 import ExpenseList from '../components/ExpenseList'
 import CategoryForm from '../components/CategoryForm'
+import ExpenseCharts from '../components/ExpenseCharts'
 
 export default function DashboardPage() {
   const [expenses, setExpenses] = useState([])
@@ -119,6 +120,12 @@ export default function DashboardPage() {
         ) : (
           <ExpenseList expenses={expenses} onDeleted={fetchExpenses} />
         )}
+      </div>
+
+      {/* Графіки */}
+      <div className="bg-white rounded-2xl shadow p-6 space-y-3">
+        <h2 className="font-semibold text-gray-700">Аналітика</h2>
+        <ExpenseCharts expenses={expenses} />
       </div>
 
     </div>
