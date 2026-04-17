@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -11,15 +11,14 @@ from app.models import User
 from app.schemas import UserCreate, UserOut, Token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def create_access_token(email: str) -> str:
@@ -35,6 +34,8 @@ def create_access_token(email: str) -> str:
 
 @router.post("/register", response_model=UserOut, status_code=201)
 async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
+    if len(data.password) > 72:
+        raise HTTPException(status_code=400, detail="Password too long (max 72 characters)")
     result = await db.execute(select(User).where(User.email == data.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -43,7 +44,7 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return user
+    return UserOut(id=user.id, email=user.email, created_at=user.created_at)
 
 
 @router.post("/login", response_model=Token)
